@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.gson.GsonBuilder
 import io.githup.hicransevik.navigationbottom.databinding.ActivityMainBinding
 import io.githup.hicransevik.navigationbottom.model.Categories
+import kotlinx.coroutines.*
 import org.json.JSONArray
 import retrofit2.Call
 import retrofit2.Callback
@@ -24,6 +25,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
 
+    var buttons: ArrayList<Button> = ArrayList<Button>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,87 +33,50 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        /*binding.button1.setOnClickListener{
-            binding.textView2.setText("All")
-        }
-        */
-        /*val buttons = Arrays
-
-
-        Array.size 4
-        // all
-        Array[0].setOnClickListener {
-
-        }
-        Array[1]
-        Array[2]
-        Array[3]*/
-
-        //var buttons[]:
-        /*doNetworkRequest {
-            createButtons(it)
-        }*/
-        doNetworkRequest()
-
-        /*navigationButtons[0].setOnClickListener {
-            binding.textView2.setText("Apple")
+        runBlocking {
+            launch {
+                buttons = doNetworkRequest()
+            }
         }
 
-        navigationButtons[1].setOnClickListener {
-            binding.textView2.setText("Banana")
+        buttons[0].setOnClickListener {
+            binding.textView2.setText("elma")
         }
-
-        navigationButtons[2].setOnClickListener {
-            binding.textView2.setText("Cherry")
+        buttons[1].setOnClickListener {
+            binding.textView2.setText("armut")
         }
-
-        navigationButtons[3].setOnClickListener {
-            binding.textView2.setText("WaterMelon")
-        }*/
+        buttons[2].setOnClickListener {
+            binding.textView2.setText("kiraz")
+        }
+        buttons[3].setOnClickListener {
+            binding.textView2.setText("karpuz")
+        }
     }
 
-    fun doNetworkRequest(){
+    suspend fun doNetworkRequest():ArrayList<Button>{
     //fun doNetworkRequest( cb:(String)-> ArrayList<Button> ) {
         var buttons: ArrayList<Button> = ArrayList<Button>()
-        val apiInterface = CategoriesService.create().getCategories()
-        apiInterface.enqueue(object : Callback<List<Categories>> {
-            override fun onResponse( call: Call<List<Categories>>?, response: Response<List<Categories>>?) {
+        val response = CategoriesService.create().getCategories()
+        if (response?.body() != null) {
 
-                if (response?.body() != null) {
+            val gsonBuilder = GsonBuilder().create()
+            val bodyResponse = gsonBuilder.toJson(response.body())
+            val jsonArray = JSONArray(bodyResponse)
 
-                    val gsonBuilder = GsonBuilder().create()
-                    val bodyResponse = gsonBuilder.toJson(response.body())
-                    val jsonArray = JSONArray(bodyResponse)
+            for (i in 0 until jsonArray.length()) {
+                val categoryName = jsonArray.getJSONObject(i).getString("name")
+                Log.i("categoryName: ", categoryName)
+                //cb(categoryName, buttons)
+                /*---------------delete here later*/
+                val buttonDynamic = Button(applicationContext)
+                buttonDynamic.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                buttonDynamic.text = categoryName
 
-                    for (i in 0 until jsonArray.length()) {
-                        val categoryName = jsonArray.getJSONObject(i).getString("name")
-                        Log.i("categoryName: ", categoryName)
-                        //cb(categoryName, buttons)
-                        /*---------------delete here later*/
-                        val buttonDynamic = Button(applicationContext)
-                        buttonDynamic.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-                        buttonDynamic.text = categoryName
-
-                        binding.buttonLayout.addView(buttonDynamic)
-                        buttons.add(buttonDynamic)
-                    }
-                }
-                buttons[0].setOnClickListener {
-                    binding.textView2.setText("elma")
-                }
-                buttons[1].setOnClickListener {
-                    binding.textView2.setText("armut")
-                }
-                buttons[2].setOnClickListener {
-                    binding.textView2.setText("kiraz")
-                }
-                buttons[3].setOnClickListener {
-                    binding.textView2.setText("karpuz")
-                }
+                binding.buttonLayout.addView(buttonDynamic)
+                buttons.add(buttonDynamic)
             }
-
-            override fun onFailure(call: Call<List<Categories>>?, t: Throwable?) = Unit
-        })
+        }
+        return buttons
     }
         fun createButtons(categoryName: String, buttons:ArrayList<Button>): Unit {
                 val buttonDynamic = Button(applicationContext)
@@ -120,12 +85,6 @@ class MainActivity : AppCompatActivity() {
 
                 binding.buttonLayout.addView(buttonDynamic)
                 buttons.add(buttonDynamic)
-                //return buttons
-
-            //TODO delete here later
-                buttonDynamic.setOnClickListener {
-                    binding.textView2.setText("Elma")
-                }
         }
 }
 
@@ -154,7 +113,7 @@ With GSON
 
 interface CategoriesService {
     @GET("categories/")
-    fun getCategories(): Call<List<Categories>>
+    suspend fun getCategories(): Response<List<Categories>>
 
     companion object {
 
